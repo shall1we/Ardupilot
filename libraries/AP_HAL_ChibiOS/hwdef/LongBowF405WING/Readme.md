@@ -23,7 +23,14 @@ The LongBowF405WING is a flight controller produced by [lefei rc](http://www.lef
         microSDCard for logging, etc.
         USB-C port
   
+## Pinout
+![LongBowF405WING](LongBowF405WING_pinout.png)
 
+## Wiring Diagram
+![LongBowF405WING](LongBowF405WING.jpg)
+
+## PDB
+![LongBowF405WING](PMU.png)
 
 ## UART Mapping
 
