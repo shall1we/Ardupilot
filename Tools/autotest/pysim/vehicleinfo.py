@@ -323,6 +323,10 @@ class VehicleInfo(object):
                 "waf_target": "bin/arduplane",
                 "default_params_filename": [], # defaults are loaded in SIM_Plane.cpp
             },
+            "glider": {
+                "waf_target": "bin/arduplane",
+                "default_params_filename": "default_params/glider.parm",
+            },
             "quadplane-copter_tailsitter": {
                 "waf_target": "bin/arduplane",
                 "default_params_filename": ["default_params/quadplane.parm","default_params/quadplane-copter_tailsitter.parm"],
@@ -367,6 +371,10 @@ class VehicleInfo(object):
             "calibration": {
                 "extra_mavlink_cmds": "module load sitl_calibration;",
                 "external": True,  # lies!  OTOH, hard to take off with this
+            },
+            "stratoblimp": {
+                "waf_target": "bin/arduplane",
+                "default_params_filename": "default_params/stratoblimp.parm",
             },
         },
     },
