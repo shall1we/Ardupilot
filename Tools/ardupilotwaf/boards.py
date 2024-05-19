@@ -1724,6 +1724,7 @@ class QURT(Board):
             "--wrap=memalign",
             "--wrap=__stack_chk_fail",
             "-lc",
+            '-lpthread',
             f"-soname={cfg.env.HEXAGON_APP}",
             "--start-group",
             "--whole-archive",
