@@ -1734,8 +1734,7 @@ class QURT(Board):
             "--wrap=realloc",
             "--wrap=memalign",
             "--wrap=__stack_chk_fail",
-            "-lc",
-            "-lc++"
+            "-lc"
         ]
 
         if not cfg.env.DEBUG:
