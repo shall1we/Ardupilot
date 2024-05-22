@@ -285,6 +285,9 @@ bool AP_Follow::should_handle_message(const mavlink_message_t &msg) const
         return false;
     }
 
+    //if (msg.sysid < 250)
+    //    gcs().send_text(MAV_SEVERITY_INFO, "follow msg from: %d", msg.sysid);
+
     // skip message if not from our target
     if (_sysid != 0 && msg.sysid != _sysid) {
         return false;
@@ -555,11 +558,13 @@ bool AP_Follow::get_target_location_and_velocity_ofs(Location &loc, Vector3f &ve
 bool AP_Follow::have_target(void) const
 {
     if (!_enabled) {
+//        gcs().send_text(MAV_SEVERITY_INFO, "AP_Follow: not enabled");
         return false;
     }
 
     // check for timeout
     if ((_last_location_update_ms == 0) || (AP_HAL::millis() - _last_location_update_ms > AP_FOLLOW_TIMEOUT_MS)) {
+//        gcs().send_text(MAV_SEVERITY_INFO, "AP_Follow: timeout %d", _last_location_update_ms);
         return false;
     }
     return true;
