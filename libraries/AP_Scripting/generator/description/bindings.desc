@@ -537,10 +537,6 @@ singleton QuadPlane method in_assisted_flight boolean
 singleton QuadPlane method abort_landing boolean
 singleton QuadPlane method in_vtol_land_descent boolean
 
-include ../ArduPlane/mode.h depends APM_BUILD_TYPE(APM_BUILD_ArduPlane)
-userdata ModeGuided rename modeguided
-userdata ModeGuided method set_radius_and_direction void float'skip_check boolean 
-
 include ../ArduSub/Sub.h depends APM_BUILD_TYPE(APM_BUILD_ArduSub)
 singleton Sub rename sub
 singleton Sub depends APM_BUILD_TYPE(APM_BUILD_ArduSub)
