@@ -1,10 +1,9 @@
 --[[
  support follow "mode" in plane. Theis will actually use GUIDED mode with 
- a scripting switch to allow guided to track 
-
- This is a very simple implementation intended to act as a framework
- for development of a custom solution
+ a scripting switch to allow guided to track the vehicle id in FOLL_SYSID
 --]]
+
+local SCRIPT_VERSION = "4.5.4"
 
 local REFRESH_RATE = 0.1   -- in seconds, so 10Hz
 
@@ -17,9 +16,9 @@ local MODE_GUIDED = 15
 local MODE_RTL = 11
 local MODE_LOITER = 12
 
-local ALT_FRAME_ABSOLUTE = 0
-
 local follow_enabled = false
+
+local too_close_follow_up = 0
 
 -- bind a parameter to a variable
 function bind_param(name)
@@ -72,8 +71,6 @@ FOLL_ACT_FN = bind_add_param("ACT_FN", 9, 301)
 
 last_follow_active_state = rc:get_aux_cached(FOLL_ACT_FN:get())
 
-local have_target = false
-
 --[[
    return true if we are in a state where follow can apply
 --]]
@@ -115,22 +112,21 @@ local function follow_check()
          vehicle:set_guided_radius_and_direction(2, false)
          follow_enabled = true
          gcs:send_text(MAV_SEVERITY.INFO, "Plane Follow: enabled")
-      else
-         -- Don't know what to do with the 3rd switch position right now.
       end
+      -- Don't know what to do with the 3rd switch position right now.
       last_follow_active_state = active_state
    end
 end
 
 -- main update function
 local function update()
+   --if follow_enabled and vehicle:get_mode() == MODE_FLY_BY_WIRE_B then
+   --   vehicle:set_mode(MODE_GUIDED)
+   --end
    follow_check()
    if not follow_active() then
     return
    end
-   -- gcs:send_text(MAV_SEVERITY.INFO, "Plane Follow: Active")
-   local target_sysid = follow:get_target_sysid()
-   -- gcs:send_text(MAV_SEVERITY.INFO, string.format("Plane Location: target sysid %d", target_sysid))
 
    --[[
       get the current navigation target. Note that we must get this
@@ -141,9 +137,6 @@ local function update()
    local target_velocity -- = Vector3f()     -- velocity of lead vehicle
    local target_distance -- = Vector3f()     -- vector to lead vehicle
    local target_offsets -- = Vector3f()      -- vector to lead vehicle + offsets
-
-   local vehicle_location = ahrs:get_location()
-
    -- just because of the methods available on AP_Follow, need to call these two methods 
    -- to get target_location, target_velocity, target distance and target 
    -- and yes target_offsets (hopefully the same value) is returned by both methods
@@ -174,9 +167,6 @@ local function update()
       local target_airspeed = target_velocity:length()
 
       -- first we tell the vehicle where we want to fly to. Guided mode figures how how to fly there.
-      -- my version
-      --local followok = vehicle:set_target_location(target_location)
-      -- plane_guided_follow version
       local current_target = vehicle:get_target_location()
       if not current_target then
          return
@@ -188,24 +178,42 @@ local function update()
          altitude_frame = 0
       end
       target_location:change_alt_frame(altitude_frame)
-      -- update the target position from the follow library, which includes the offsets
-      vehicle:update_target_location(current_target, target_location)
       
-      -- if the current velocity will not catch up to the target then we need to speed up use 12 seconds as a reasonable time to try to catch up
+      -- next we try to match the airspeed of the target vehicle, calculating if we
+      -- need to speed up if too far behind, or slow down if too close
+      
+      -- if the current velocity will not catch up to the target then we need to speed up 
+      -- use 12 seconds as a reasonable time to try to catch up
       -- first figure out how far away we will be from the required location in 12 seconds if we maintain the current vehicle and target airspeeds
       -- There is nothing magic about 12, it is just "what works" 
-      local projected_distance = xy_dist - vehicle_airspeed * 12 + target_airspeed * 12
-      -- gcs:send_text(MAV_SEVERITY.INFO, string.format("Plane Follow: projected distance %f", projected_distance))
-   
+      local projected_distance = xy_dist + (target_airspeed * 10 - vehicle_airspeed * 10)
+
+      if math.abs(projected_distance) < target_airspeed or too_close_follow_up > 0 then
+         -- we are just about to hit the target, so artificially jump it ahead 500m
+         -- note that is after setting xy_dist so that we still calculate airspeed below
+         -- according to the desired location not the one we are telling vehicle about
+         local current_bearing = vehicle:get_wp_bearing_deg() 
+         target_location:offset_bearing(current_bearing, 500)   
+
+         -- force a maxium deceleration
+         xy_dist = 5000
+         -- if we are still too close then make sure that we follow_up on this track 
+         -- for 20xREFRESH_RATE (so about 2 seconds) to enable the decelaratino to kick in 
+         if math.abs(projected_distance) < target_airspeed then
+            too_close_followup = 20
+         else
+            too_close_followup = too_close_follow_up - 1
+         end
+      end
+      vehicle:update_target_location(current_target, target_location)
+
       -- now calculate what airspeed we will need to fly for that 12 seconds to catch up the projected distance
-      local desired_airspeed = projected_distance / 12
-      -- gcs:send_text(MAV_SEVERITY.INFO, string.format("Plane Follow: desired velocity %f", desired_airspeed))
+      --gcs:send_text(MAV_SEVERITY.INFO, string.format("Plane Follow: incremental airspeed %f", ((projected_distance - xy_dist) / 12) * 1.1))
+      local desired_airspeed = vehicle_airspeed + ((projected_distance - xy_dist) / 12) * 1.1
       vehicle:set_desired_speed(desired_airspeed)
       -- the desired airspeed will never be acheived, don't worry -we will do this calculation again in REFRESH_RATE seconds, so we can adjust
    end
 end
-
-gcs:send_text(MAV_SEVERITY.INFO, "Plane Follow: Loaded")
 
 -- wrapper around update(). This calls update() at 20Hz,
 -- and if update faults then an error is displayed, but the script is not
@@ -220,6 +228,8 @@ local function protected_wrapper()
   end
   return protected_wrapper, 1000 * REFRESH_RATE
 end
+
+gcs:send_text(MAV_SEVERITY.NOTICE, string.format("Plane Follow %s script loaded", SCRIPT_VERSION) )
 
 -- start running update loop
 return protected_wrapper()
