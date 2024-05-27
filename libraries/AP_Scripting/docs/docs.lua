@@ -3410,6 +3410,7 @@ function follow:get_last_update_ms() end
 ---@return boolean
 function follow:have_target() end
 
+
 -- desc
 ---@return uint8_t_ud
 function follow:get_target_sysid() end
@@ -3417,6 +3418,9 @@ function follow:get_target_sysid() end
 -- desc
 ---@return float
 function follow:get_distance_to_target() end
+
+-- desc
+scripting = {}
 
 -- desc
 function scripting:restart_all() end
