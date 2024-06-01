@@ -2427,7 +2427,7 @@ function vehicle:nav_scripting_enable(param1) end
 ---@return boolean  -- success
 function vehicle:set_desired_speed(param1) end
 
--- desc
+-- desc set the guided mode radious and direction used for the final loiter at the target
 ---@return boolean
 ---@param radius float
 ---@param direction_is_ccw boolean
@@ -3396,7 +3396,7 @@ function follow:get_target_location_and_velocity_ofs() end
 ---@return Vector3f_ud|nil
 function follow:get_target_location_and_velocity() end
 
--- desc
+-- desc get distance vector to target (in meters) and target's velocity all in NED frame
 ---@return Vector3f_ud|nil
 ---@return Vector3f_ud|nil
 ---@return Vector3f_ud|nil
@@ -3411,12 +3411,12 @@ function follow:get_last_update_ms() end
 function follow:have_target() end
 
 
--- desc
+-- desc the SYSID of the follow target vehicle
 ---@return uint8_t_ud
 function follow:get_target_sysid() end
 
--- desc
----@return float
+-- desc returns the distance in meters to the target
+---@return float 
 function follow:get_distance_to_target() end
 
 -- desc
