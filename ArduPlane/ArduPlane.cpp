@@ -963,21 +963,17 @@ bool Plane::flight_option_enabled(FlightOptions flight_option) const
     return g2.flight_options & flight_option;
 }
 
+#if AP_SCRIPTING_ENABLED
 // this implements the virtual function defined in AP_Vehicle and already used in Copter
-// which is why a better name like set_desired_airspeed can't be used
 bool Plane::set_desired_speed(float speed)
 {
-    /* My original proposal
-    plane.guided_state.target_airspeed_cm = speed * 100.0f;
-    plane.guided_state.target_airspeed_time_ms = AP_HAL::millis();
-    plane.guided_state.target_airspeed_accel = 1000.0f;
-    */
-    // Peter Hall's alternative suggestion is to set new_airspeed_cm directly
     plane.new_airspeed_cm = constrain_float(speed, aparm.airspeed_min, aparm.airspeed_max) * 100.0f;
     
     return true;
 }
+#endif
 
+#if AP_SCRIPTING_ENABLED
 // Helper function to let scripting set the guided mode radius
 bool Plane::set_guided_radius_and_direction(float radius, bool direction_is_ccw)
 {
@@ -987,6 +983,7 @@ bool Plane::set_guided_radius_and_direction(float radius, bool direction_is_ccw)
     }
     return false;
 }
+#endif
 
 #if AC_PRECLAND_ENABLED
 void Plane::precland_update(void)
