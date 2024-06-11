@@ -81,6 +81,8 @@ private:
         VN_IMU,  // IMU-only mode, used by VN-1X0
     } type;
 
+    bool has_dual_gnss = false;
+
     char model_name[25];
 
     // NMEA parsing for setup

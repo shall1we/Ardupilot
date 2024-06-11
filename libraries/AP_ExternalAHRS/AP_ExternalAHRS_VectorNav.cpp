@@ -429,6 +429,9 @@ void AP_ExternalAHRS_VectorNav::update_thread()
         if (strncmp(model_name, "VN-300", 6) == 0) {
             imu_rate = 400;
         }
+        if (strncmp(model_name, "VN-3", 4) == 0) {
+            has_dual_gnss = true;
+        }
         nmea_printf(uart, "$VNWRG,75,3,%u,34,072E,0106,0612", unsigned(imu_rate/get_rate()));
         nmea_printf(uart, "$VNWRG,76,3,%u,4E,0002,0010,20B8,0018", unsigned(imu_rate/5));
     }
@@ -706,7 +709,7 @@ bool AP_ExternalAHRS_VectorNav::pre_arm_check(char *failure_msg, uint8_t failure
             hal.util->snprintf(failure_msg, failure_msg_len, "VectorNav no GPS1 lock");
             return false;
         }
-        if (last_ins_pkt2->GPS2Fix < 3) {
+        if (has_dual_gnss && (last_ins_pkt2->GPS2Fix < 3)) {
             hal.util->snprintf(failure_msg, failure_msg_len, "VectorNav no GPS2 lock");
             return false;
         }
