@@ -1079,6 +1079,11 @@ void Aircraft::update_external_payload(const struct sitl_input &input)
         fetteconewireesc->update(*this);
     }
 
+    // update EcoTrons EFI
+    if (ecoefi) {
+        ecoefi->update(input);
+    }
+
 #if AP_SIM_SHIP_ENABLED
     sitl->models.shipsim.update();
 #endif
