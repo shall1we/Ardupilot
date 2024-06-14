@@ -964,12 +964,14 @@ bool Plane::flight_option_enabled(FlightOptions flight_option) const
 }
 
 #if AP_SCRIPTING_ENABLED
-// this implements the virtual function defined in AP_Vehicle and already used in Copter
-bool Plane::set_desired_speed(float speed)
+// this implements the virtual function defined in AP_Vehicle for Plane to set the desired airspeed in m/s
+bool Plane::set_desired_airspeed(float airspeed_new)
 {
-    plane.new_airspeed_cm = constrain_float(speed, aparm.airspeed_min, aparm.airspeed_max) * 100.0f;
-    
-    return true;
+    if (control_mode == &mode_guided || control_mode == &mode_auto) {
+        plane.new_airspeed_cm = constrain_float(airspeed_new, aparm.airspeed_min, aparm.airspeed_max) * 100.0f;
+        return true;
+    }
+    return false;
 }
 #endif
 
