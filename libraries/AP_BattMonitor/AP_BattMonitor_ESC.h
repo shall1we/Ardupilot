@@ -53,6 +53,8 @@ private:
     bool have_current;
     bool have_temperature;
     float delta_mah;
+
+    uint8_t esc_count;
 };
 
 #endif  // AP_BATTERY_ESC_ENABLED
