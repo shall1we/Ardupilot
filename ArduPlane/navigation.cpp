@@ -203,6 +203,7 @@ void Plane::calc_airspeed_errors()
             target_airspeed_cm = constrain_float(MAX(guided_state.target_airspeed_cm, target_airspeed_cm), aparm.airspeed_min *100, aparm.airspeed_max *100);
         }
 
+    //GCS_SEND_TEXT(MAV_SEVERITY_INFO, "navigation guided  - airspeed target cm: %d", target_airspeed_cm);
 #endif // OFFBOARD_GUIDED == ENABLED
 
 #if HAL_SOARING_ENABLED
@@ -459,3 +460,5 @@ bool Plane::reached_loiter_target(void)
 #endif
     return nav_controller->reached_loiter_target();
 }
+
+

@@ -2422,10 +2422,21 @@ function vehicle:set_velocity_match(param1) end
 ---@return boolean
 function vehicle:nav_scripting_enable(param1) end
 
--- desc sets autopilot nav speed (Copter and Rover)
----@param param1 number
----@return boolean
+-- desc sets autopilot nav speed (Plane, Copter and Rover)
+---@param param1 number -- desired speed in m/s 
+---@return boolean  -- success
 function vehicle:set_desired_speed(param1) end
+
+-- desc sets autopilot desired airspeed (Plane)
+---@param airspeed_new number -- new airspeed in m/s
+---@return boolean
+function vehicle:set_desired_airspeed(airspeed_new) end
+
+-- desc set the guided mode radious and direction used for the final loiter at the target
+---@return boolean
+---@param radius float
+---@param direction_is_ccw boolean 
+function vehicle:set_guided_radius_and_direction() end
 
 -- desc
 ---@param param1 number
@@ -3390,6 +3401,12 @@ function follow:get_target_location_and_velocity_ofs() end
 ---@return Vector3f_ud|nil
 function follow:get_target_location_and_velocity() end
 
+-- desc get distance vector to target (in meters) and target's velocity all in NED frame
+---@return Vector3f_ud|nil
+---@return Vector3f_ud|nil
+---@return Vector3f_ud|nil
+function follow:get_target_dist_and_vel_ned() end
+
 -- desc
 ---@return uint32_t_ud
 function follow:get_last_update_ms() end
@@ -3397,6 +3414,15 @@ function follow:get_last_update_ms() end
 -- desc
 ---@return boolean
 function follow:have_target() end
+
+
+-- desc the SYSID of the follow target vehicle
+---@return uint8_t_ud
+function follow:get_target_sysid() end
+
+-- desc returns the distance in meters to the target
+---@return float 
+function follow:get_distance_to_target() end
 
 -- desc
 scripting = {}
