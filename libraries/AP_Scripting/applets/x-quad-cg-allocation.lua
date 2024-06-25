@@ -17,6 +17,10 @@ Global definitions.
 local MAV_SEVERITY = {EMERGENCY=0, ALERT=1, CRITICAL=2, ERROR=3, WARNING=4, NOTICE=5, INFO=6, DEBUG=7}
 local SCRIPT_NAME = "CoG adjust script"
 local LOOP_RATE_HZ = 10
+local last_warning_time_ms = uint32_t() -- Time we last sent a warning message to the user.
+local WARNING_DEADTIME_MS = 1000 -- How often the user should be warned.
+local is_frame_mc_quad_x = false
+local is_frame_fw_quad_x = false
 
 -- State machine states.
 local FSM_STATE = {
@@ -35,30 +39,119 @@ local PARAM_TABLE_PREFIX = "CGA_"
 
 -- Bind a parameter to a variable.
 function bind_param(name)
-   return Parameter(name)
+    return Parameter(name)
 end
 
 -- Add a parameter and bind it to a variable.
 function bind_add_param(name, idx, default_value)
-   assert(param:add_param(PARAM_TABLE_KEY, idx, name, default_value), string.format('Could not add param %s', name))
-   return bind_param(PARAM_TABLE_PREFIX .. name)
+    assert(param:add_param(PARAM_TABLE_KEY, idx, name, default_value), string.format('Could not add param %s', name))
+    return bind_param(PARAM_TABLE_PREFIX .. name)
 end
+
+-- Add param table.
+assert(param:add_table(PARAM_TABLE_KEY, PARAM_TABLE_PREFIX, 1), SCRIPT_NAME .. ': Could not add param table.')
 
 --[[
   // @Param: CGA_RATIO
   // @DisplayName: CoG adjustment ratio
   // @Description: The ratio between the front and back motor outputs during steady-state hover. Positive when the CoG is in front of the motors midpoint (front motors work harder).
-  // @Range: -0.5 0.5
+  // @Range: 0.5 2
   // @User: Advanced
 --]]
 CGA_RATIO = bind_add_param('RATIO', 1, 1)
 
 -- Bindings to existing parameters
--- SCR_ENABLED = bind_param("SCR_ENABLED")
 
 --[[
 Potential additions:
 --]]
+-- Warn the user, throttling the message rate.
+function warn_user(msg, severity)
+    severity = severity or MAV_SEVERITY.WARNING -- Optional severity argument.
+    if millis() - last_warning_time_ms > WARNING_DEADTIME_MS then
+            gcs:send_text(severity, SCRIPT_NAME .. ": " .. msg)
+        last_warning_time_ms = millis()
+    end
+end
+
+-- Decide if the given ratio value makes sense.
+function sanitize_ratio(ratio)
+    if (ratio < 0.5) or (ratio > 2) then
+        warn_user("CGA_RATIO value out of bounds.")
+        return 1.0 -- Return default.
+    else
+        return ratio
+    end
+end
+
+-- Adjust the dynamic motor mixer.
+function update_mixer(ratio)
+
+    factors = motor_factor_table()
+
+    -- Roll stays as-is.
+    -- factors:roll(0, -0.5)
+    -- factors:roll(1,  0.5)
+    -- factors:roll(2, -0.5)
+    -- factors:roll(3,  0.5)
+
+    -- Pitch is modulated by the ratio.
+    factors:pitch(0,  1/(1+ratio))
+    factors:pitch(1,  -ratio/(1+ratio))
+    factors:pitch(2,  1/(1+ratio))
+    factors:pitch(3, -ratio/(1+ratio))
+
+    -- Yaw stays as-is
+    -- factors:yaw(0,  0.5)
+    -- factors:yaw(1,  0.5)
+    -- factors:yaw(2, -0.5)
+    -- factors:yaw(3, -0.5)
+
+    -- Throttle stays as-is.
+    -- factors:throttle(0,  1)
+    -- factors:throttle(1,  1)
+    -- factors:throttle(2,  1)
+    -- factors:throttle(3,  1)
+
+    Motors_dynamic:load_factors(factors)
+
+    if not Motors_dynamic:init(4) then
+        warn_user("Failed to initialize motor matrix!", MAV_SEVERITY.EMERGENCY)
+    end
+
+end
+
+-- Decide if the UA is a Quad X quadplane.
+function inspect_frame_fw_quad_x()
+    local result = false
+
+    Q_ENABLE = bind_param("Q_ENABLE")
+    Q_FRAME_CLASS = bind_param("Q_FRAME_CLASS")
+    Q_FRAME_TYPE = bind_param("Q_FRAME_TYPE")
+
+    if FWVersion:type()==1 then
+        -- Test for the validity of the parameters.
+        if Q_ENABLE:get()==1 and Q_FRAME_CLASS:get()==1 and Q_FRAME_TYPE:get()==1 then
+            result = true
+        end
+    end
+    is_frame_fw_quad_x = result
+end
+
+-- Decide if the UA is a Quad X multicopter.
+function inspect_frame_mc_quad_x()
+    local result = false
+
+    FRAME_CLASS = bind_param("FRAME_CLASS")
+    FRAME_TYPE = bind_param("FRAME_TYPE")
+
+    if FWVersion:type()==2 then 
+        if FRAME_CLASS:get()==1 and FRAME_TYPE:get()==1 then
+            result = true
+        end
+    end
+    is_frame_mc_quad_x = result
+end
 
 --[[
 Activation conditions
@@ -66,7 +159,9 @@ Activation conditions
 -- Check for script activating conditions here.
 -- Check frame types.
 function can_start()
-    return true
+    result = is_frame_mc_quad_x or is_frame_fw_quad_x
+    result = result and arming:is_armed()
+    return result
 end
 
 --[[
@@ -88,7 +183,11 @@ function fsm_step()
         end
 
     elseif current_state == FSM_STATE.ACTIVE then
-        -- Do stuff here.
+        -- Assert the parameter limits.
+        local ratio = sanitize_ratio(CGA_RATIO:get())
+        -- Create the control allocation matrix parameters.
+        update_mixer(ratio)
+
         if must_stop() then
             next_state = FSM_STATE.INACTIVE
         end
@@ -106,6 +205,9 @@ function update()
     fsm_step()
 end
 
+-- Check once on boot if the frame type is suitable for this script.
+pcall(inspect_frame_mc_quad_x)
+pcall(inspect_frame_fw_quad_x)
 gcs:send_text(MAV_SEVERITY.INFO, SCRIPT_NAME .. string.format(" loaded."))
 
 -- Wrapper around update() to catch errors.
