@@ -129,7 +129,7 @@ function inspect_frame_fw_quad_x()
     Q_FRAME_CLASS = bind_param("Q_FRAME_CLASS")
     Q_FRAME_TYPE = bind_param("Q_FRAME_TYPE")
 
-    if FWVersion:type()==1 then
+    if FWVersion:type()==3 then
         -- Test for the validity of the parameters.
         if Q_ENABLE:get()==1 and Q_FRAME_CLASS:get()==1 and Q_FRAME_TYPE:get()==1 then
             result = true
