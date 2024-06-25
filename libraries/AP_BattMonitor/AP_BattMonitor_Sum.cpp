@@ -54,6 +54,7 @@ AP_BattMonitor_Sum::read()
     float current_sum = 0;
     uint8_t current_count = 0;
 
+    bool all_healthy = true;
     for (uint8_t i=0; i<_mon.num_instances(); i++) {
         if (i == _instance) {
             // never include self
@@ -68,6 +69,7 @@ AP_BattMonitor_Sum::read()
             continue;
         }
         if (!_mon.healthy(i)) {
+            all_healthy = false;
             continue;
         }
         voltage_sum += _mon.voltage(i);
@@ -91,7 +93,7 @@ AP_BattMonitor_Sum::read()
     update_consumed(_state, dt_us);
 
     _has_current = (current_count > 0);
-    _state.healthy = (voltage_count > 0);
+    _state.healthy = (voltage_count > 0) && all_healthy;
 
     if (_state.healthy) {
         _state.last_time_micros = tnow_us;

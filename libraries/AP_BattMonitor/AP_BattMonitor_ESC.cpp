@@ -99,12 +99,27 @@ void AP_BattMonitor_ESC::read(void)
         }
     }
 
+    // Max number of ESCs ever seen
+    esc_count = MAX(esc_count, voltage_escs);
+
+    if (voltage_escs == 0) {
+        // Need at least one to be healthy
+        _state.healthy = false;
+
+    } else if (all_enabled) {
+        // All ESCs must be found
+        _state.healthy = voltage_escs == esc_count;
+
+    } else {
+        // All selected ESCs must be found
+        _state.healthy = voltage_escs == __builtin_popcount(_mask);
+
+    }
+
     if (voltage_escs > 0) {
         _state.voltage = voltage_sum / voltage_escs;
-        _state.healthy = true;
     } else {
         _state.voltage = 0;
-        _state.healthy = false;
     }
     if (temperature_escs > 0) {
         _state.temperature = temperature_sum / temperature_escs;
