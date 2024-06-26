@@ -541,6 +541,7 @@ void port_setbaud(uint32_t baudrate)
 void check_ecc_errors(void)
 {
     __disable_fault_irq();
+    // stm32_flash_corrupt(0x8012300);
     auto *dma = dmaStreamAlloc(STM32_DMA_STREAM_ID(1, 1), 0, nullptr, nullptr);
     uint32_t buf[32];
     uint32_t ofs = 0;
