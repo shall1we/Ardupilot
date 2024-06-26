@@ -121,6 +121,17 @@ function update_mixer(ratio)
 
 end
 
+function update_mixer_2(ratio)
+    local r1 = 1/(1+ratio)
+    local r2 = ratio/(1+ratio)
+    MotorsMatrix:add_motor_raw(0, -0.5,  r1,  1, 2)
+    MotorsMatrix:add_motor_raw(1,  0.5, -r2,  1, 4)
+    MotorsMatrix:add_motor_raw(2, -0.5,  r1, -1, 1)
+    MotorsMatrix:add_motor_raw(3,  0.5, -r2, -1, 3)
+
+    assert(MotorsMatrix:init(4), "Failed to init MotorsMatrix")
+end
+
 -- Decide if the UA is a Quad X quadplane.
 function inspect_frame_fw_quad_x()
     local result = false
@@ -186,7 +197,7 @@ function fsm_step()
         -- Assert the parameter limits.
         local ratio = sanitize_ratio(CGA_RATIO:get())
         -- Create the control allocation matrix parameters.
-        update_mixer(ratio)
+        update_mixer_2(ratio)
 
         if must_stop() then
             next_state = FSM_STATE.INACTIVE
