@@ -789,6 +789,13 @@ singleton AP_Winch method release_length void float'skip_check
 singleton AP_Winch method set_desired_rate void float'skip_check
 singleton AP_Winch method get_rate_max float
 
+include AP_Gripper/AP_Gripper.h
+singleton AP_Gripper depends AP_GRIPPER_ENABLED
+singleton AP_Gripper rename gripper
+singleton AP_Gripper method grab void
+singleton AP_Gripper method release void
+singleton AP_Gripper method released boolean
+
 include AP_IOMCU/AP_IOMCU.h
 singleton AP_IOMCU depends HAL_WITH_IO_MCU
 singleton AP_IOMCU rename iomcu
