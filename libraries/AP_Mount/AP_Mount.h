@@ -129,6 +129,8 @@ public:
     // return primary instance ID
     uint8_t get_primary_instance() const { return _primary; }
 
+    uint8_t get_num_instances() const { return _num_instances; }
+
     // get_mount_type - returns the type of mount
     Type get_mount_type() const { return get_mount_type(_primary); }
     Type get_mount_type(uint8_t instance) const;
