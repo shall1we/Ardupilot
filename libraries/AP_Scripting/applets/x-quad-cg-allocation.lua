@@ -4,9 +4,10 @@
 --
 -- How To Use
 --   1. Place this script in the "scripts" directory.
---   2. Set the correct value of the ??? parameter.
---   3. Enable the script via the ??? parameter.
---   4. Fly the vehicle.
+--   2. Enable the script via the ??? parameter.
+--   3. Reboot.
+--   4. Set the correct value of the ??? parameter.
+--   5. Fly the vehicle.
 --
 -- How It Works
 --   1. The control allocation matrix is adjusted for thrust and pitch based on the ??? parameter value.
@@ -19,8 +20,8 @@ local SCRIPT_NAME = "CoG adjust script"
 local LOOP_RATE_HZ = 10
 local last_warning_time_ms = uint32_t() -- Time we last sent a warning message to the user.
 local WARNING_DEADTIME_MS = 1000 -- How often the user should be warned.
-local is_frame_mc_quad_x = false
-local is_frame_fw_quad_x = false
+local is_frame_mc_ok = false
+local is_frame_fw_ok = false
 
 -- State machine states.
 local FSM_STATE = {
@@ -76,7 +77,7 @@ end
 
 -- Decide if the given ratio value makes sense.
 function sanitize_ratio(ratio)
-    if (ratio < 0.5) or (ratio > 2) then
+    if (ratio < 0.1) or (ratio > 10) then
         warn_user("CGA_RATIO value out of bounds.")
         return 1.0 -- Return default.
     else
@@ -87,36 +88,43 @@ end
 -- Adjust the dynamic motor mixer.
 function update_mixer(ratio)
 
+    Motors_dynamic:add_motor(0, 1)
+    Motors_dynamic:add_motor(1, 3)
+    Motors_dynamic:add_motor(2, 4)
+    Motors_dynamic:add_motor(3, 2)
+
     factors = motor_factor_table()
 
     -- Roll stays as-is.
-    -- factors:roll(0, -0.5)
-    -- factors:roll(1,  0.5)
-    -- factors:roll(2, -0.5)
-    -- factors:roll(3,  0.5)
+    factors:roll(0, -0.5)
+    factors:roll(1,  0.5)
+    factors:roll(2,  0.5)
+    factors:roll(3, -0.5)
 
     -- Pitch is modulated by the ratio.
-    factors:pitch(0,  1/(1+ratio))
-    factors:pitch(1,  -ratio/(1+ratio))
-    factors:pitch(2,  1/(1+ratio))
+    factors:pitch(0, 1/(1+ratio))
+    factors:pitch(1, -ratio/(1+ratio))
+    factors:pitch(2, 1/(1+ratio))
     factors:pitch(3, -ratio/(1+ratio))
 
     -- Yaw stays as-is
-    -- factors:yaw(0,  0.5)
-    -- factors:yaw(1,  0.5)
-    -- factors:yaw(2, -0.5)
-    -- factors:yaw(3, -0.5)
+    factors:yaw(0,  0.5)
+    factors:yaw(1,  0.5)
+    factors:yaw(2, -0.5)
+    factors:yaw(3, -0.5)
 
     -- Throttle stays as-is.
-    -- factors:throttle(0,  1)
-    -- factors:throttle(1,  1)
-    -- factors:throttle(2,  1)
-    -- factors:throttle(3,  1)
+    factors:throttle(0,  1)
+    factors:throttle(1,  1)
+    factors:throttle(2,  1)
+    factors:throttle(3,  1)
 
     Motors_dynamic:load_factors(factors)
 
     if not Motors_dynamic:init(4) then
         warn_user("Failed to initialize motor matrix!", MAV_SEVERITY.EMERGENCY)
+    else
+        warn_user("Set ratio to " .. tostring(ratio), MAV_SEVERITY.INFO)
     end
 
 end
@@ -124,44 +132,54 @@ end
 function update_mixer_2(ratio)
     local r1 = 1/(1+ratio)
     local r2 = ratio/(1+ratio)
-    MotorsMatrix:add_motor_raw(0, -0.5,  r1,  1, 2)
-    MotorsMatrix:add_motor_raw(1,  0.5, -r2,  1, 4)
-    MotorsMatrix:add_motor_raw(2, -0.5,  r1, -1, 1)
-    MotorsMatrix:add_motor_raw(3,  0.5, -r2, -1, 3)
+    -- MotorsMatrix:add_motor_raw(0, -0.5,  r1,  1, 2)
+    -- MotorsMatrix:add_motor_raw(1,  0.5, -r2,  1, 4)
+    -- MotorsMatrix:add_motor_raw(2,  0.5,  r1, -1, 1)
+    -- MotorsMatrix:add_motor_raw(3, -0.5, -r2, -1, 3)
+    MotorsMatrix:add_motor_raw(0, -0.5,  0.5,  1, 2)
+    MotorsMatrix:add_motor_raw(1,  0.5, -0.5,  1, 4)
+    MotorsMatrix:add_motor_raw(2,  0.5,  0.5, -1, 1)
+    MotorsMatrix:add_motor_raw(3, -0.5, -0.5, -1, 3)
+    MotorsMatrix:set_throttle_factor(0, 2*r2)
+    MotorsMatrix:set_throttle_factor(1, r1)
+    MotorsMatrix:set_throttle_factor(2, 2*r2)
+    MotorsMatrix:set_throttle_factor(3, r1)
 
-    assert(MotorsMatrix:init(4), "Failed to init MotorsMatrix")
+    if not MotorsMatrix:init(4) then
+        warn_user("Failed to initialize motor matrix!", MAV_SEVERITY.EMERGENCY)
+    else
+        warn_user("Set ratio to " .. tostring(ratio), MAV_SEVERITY.INFO)
+    end
 end
 
 -- Decide if the UA is a Quad X quadplane.
-function inspect_frame_fw_quad_x()
+function inspect_frame_class_fw()
     local result = false
 
     Q_ENABLE = bind_param("Q_ENABLE")
     Q_FRAME_CLASS = bind_param("Q_FRAME_CLASS")
-    Q_FRAME_TYPE = bind_param("Q_FRAME_TYPE")
 
     if FWVersion:type()==3 then
         -- Test for the validity of the parameters.
-        if Q_ENABLE:get()==1 and Q_FRAME_CLASS:get()==1 and Q_FRAME_TYPE:get()==1 then
+        if Q_ENABLE:get()==1 and Q_FRAME_CLASS:get()==15 then
             result = true
         end
     end
-    is_frame_fw_quad_x = result
+    is_frame_fw_ok = result
 end
 
 -- Decide if the UA is a Quad X multicopter.
-function inspect_frame_mc_quad_x()
+function inspect_frame_class_mc()
     local result = false
 
     FRAME_CLASS = bind_param("FRAME_CLASS")
-    FRAME_TYPE = bind_param("FRAME_TYPE")
 
     if FWVersion:type()==2 then 
-        if FRAME_CLASS:get()==1 and FRAME_TYPE:get()==1 then
+        if FRAME_CLASS:get()==15 then
             result = true
         end
     end
-    is_frame_mc_quad_x = result
+    is_frame_mc_ok = result
 end
 
 --[[
@@ -170,8 +188,7 @@ Activation conditions
 -- Check for script activating conditions here.
 -- Check frame types.
 function can_start()
-    result = is_frame_mc_quad_x or is_frame_fw_quad_x
-    result = result and arming:is_armed()
+    result = is_frame_mc_ok or is_frame_fw_ok
     return result
 end
 
@@ -180,8 +197,7 @@ Deactivation conditions
 --]]
 -- Check for script deactivating conditions here.
 function must_stop()
-    local result = not arming:is_armed()
-    return result
+    return false
 end
 
 --[[
@@ -217,8 +233,8 @@ function update()
 end
 
 -- Check once on boot if the frame type is suitable for this script.
-pcall(inspect_frame_mc_quad_x)
-pcall(inspect_frame_fw_quad_x)
+pcall(inspect_frame_class_mc)
+pcall(inspect_frame_class_fw)
 gcs:send_text(MAV_SEVERITY.INFO, SCRIPT_NAME .. string.format(" loaded."))
 
 -- Wrapper around update() to catch errors.
