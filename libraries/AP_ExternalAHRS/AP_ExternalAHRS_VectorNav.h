@@ -78,7 +78,7 @@ private:
 
     enum class TYPE {
         VN_INS,  // Full INS mode, requiring GNSS. Used by VN-2X0 and VN-3X0
-        VN_IMU,  // IMU-only mode, used by VN-1X0
+        VN_AHRS,  // IMU-only mode, used by VN-1X0
     } type;
 
     bool has_dual_gnss = false;
