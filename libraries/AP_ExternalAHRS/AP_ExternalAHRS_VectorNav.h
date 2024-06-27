@@ -63,7 +63,7 @@ private:
 
     void process_ins_packet1(const uint8_t *b);
     void process_ins_packet2(const uint8_t *b);
-    void process_imu_packet(const uint8_t *b);
+    void process_ahrs_packet(const uint8_t *b);
     void wait_register_responce(const uint8_t register_num);
 
     uint8_t *pktbuf;

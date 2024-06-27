@@ -132,7 +132,7 @@ struct PACKED VN_INS_packet2 {
 static_assert(sizeof(VN_INS_packet2)+2+4*2+2 == VN_INS_PKT2_LENGTH, "incorrect VN_INS_packet2 length");
 
 /*
-header for 50Hz IMU data, used in TYPE::VN_IMU only 
+header for 50Hz IMU data, used in TYPE::VN_AHRS only 
   assumes the following VN-100 config:
     $VNWRG,75,3,80,14,073E,0004*66
 
@@ -152,10 +152,10 @@ header for 50Hz IMU data, used in TYPE::VN_IMU only
             0x0004:
                 Quaternion
 */
-static const uint8_t vn_imu_pkt1_header[] { 0x14, 0x3E, 0x07, 0x04, 0x00 };
-#define VN_IMU_PKT1_LENGTH 104 // includes header and CRC
+static const uint8_t vn_ahrs_pkt1_header[] { 0x14, 0x3E, 0x07, 0x04, 0x00 };
+#define VN_AHRS_PKT1_LENGTH 104 // includes header and CRC
 
-struct PACKED VN_IMU_packet1 {
+struct PACKED VN_AHRS_packet1 {
     float uncompMag[3];
     float uncompAccel[3];
     float uncompAngRate[3];
@@ -167,7 +167,7 @@ struct PACKED VN_IMU_packet1 {
     float quaternion[4];
 };
 
-static_assert(sizeof(VN_IMU_packet1)+2+2*2+2 == VN_IMU_PKT1_LENGTH, "incorrect VN_IMU_packet1 length");
+static_assert(sizeof(VN_AHRS_packet1)+2+2*2+2 == VN_AHRS_PKT1_LENGTH, "incorrect VN_AHRS_packet1 length");
 
 // constructor
 AP_ExternalAHRS_VectorNav::AP_ExternalAHRS_VectorNav(AP_ExternalAHRS *_frontend,
@@ -183,7 +183,7 @@ AP_ExternalAHRS_VectorNav::AP_ExternalAHRS_VectorNav(AP_ExternalAHRS *_frontend,
     baudrate = sm.find_baudrate(AP_SerialManager::SerialProtocol_AHRS, 0);
     port_num = sm.find_portnum(AP_SerialManager::SerialProtocol_AHRS, 0);
 
-    bufsize = MAX(MAX(VN_INS_PKT1_LENGTH, VN_INS_PKT2_LENGTH), VN_IMU_PKT1_LENGTH);
+    bufsize = MAX(MAX(VN_INS_PKT1_LENGTH, VN_INS_PKT2_LENGTH), VN_AHRS_PKT1_LENGTH);
     pktbuf = NEW_NOTHROW uint8_t[bufsize];
     last_ins_pkt1 = NEW_NOTHROW VN_INS_packet1;
     last_ins_pkt2 = NEW_NOTHROW VN_INS_packet2;
@@ -235,7 +235,7 @@ bool AP_ExternalAHRS_VectorNav::check_uart()
         match_header1 = (0 == memcmp(&pktbuf[1], vn_ins_pkt1_header, MIN(sizeof(vn_ins_pkt1_header), unsigned(pktoffset-1))));
         match_header2 = (0 == memcmp(&pktbuf[1], vn_ins_pkt2_header, MIN(sizeof(vn_ins_pkt2_header), unsigned(pktoffset-1))));
     } else {
-        match_header3 = (0 == memcmp(&pktbuf[1], vn_imu_pkt1_header, MIN(sizeof(vn_imu_pkt1_header), unsigned(pktoffset-1))));
+        match_header3 = (0 == memcmp(&pktbuf[1], vn_ahrs_pkt1_header, MIN(sizeof(vn_ahrs_pkt1_header), unsigned(pktoffset-1))));
     }
     if (!match_header1 && !match_header2 && !match_header3) {
         goto reset;
@@ -261,13 +261,13 @@ bool AP_ExternalAHRS_VectorNav::check_uart()
         } else {
             goto reset;
         }
-    } else if (match_header3 && pktoffset >= VN_IMU_PKT1_LENGTH) {
-        uint16_t crc = crc16_ccitt(&pktbuf[1], VN_IMU_PKT1_LENGTH-1, 0);
+    } else if (match_header3 && pktoffset >= VN_AHRS_PKT1_LENGTH) {
+        uint16_t crc = crc16_ccitt(&pktbuf[1], VN_AHRS_PKT1_LENGTH-1, 0);
         if (crc == 0) {
-            // got IMU pkt
-            process_imu_packet(&pktbuf[sizeof(vn_imu_pkt1_header)+1]);
-            memmove(&pktbuf[0], &pktbuf[VN_IMU_PKT1_LENGTH], pktoffset-VN_IMU_PKT1_LENGTH);
-            pktoffset -= VN_IMU_PKT1_LENGTH;
+            // got AHRS pkt
+            process_ahrs_packet(&pktbuf[sizeof(vn_ahrs_pkt1_header)+1]);
+            memmove(&pktbuf[0], &pktbuf[VN_AHRS_PKT1_LENGTH], pktoffset-VN_AHRS_PKT1_LENGTH);
+            pktoffset -= VN_AHRS_PKT1_LENGTH;
         } else {
             goto reset;
         }
@@ -417,7 +417,7 @@ void AP_ExternalAHRS_VectorNav::update_thread()
     // Setup for messages respective model types (on both UARTs)
     if (strncmp(model_name, "VN-1", 4) == 0) {
         // VN-100
-        type = TYPE::VN_IMU;
+        type = TYPE::VN_AHRS;
 
         // This assumes unit is still configured at its default rate of 800hz
         nmea_printf(uart, "$VNWRG,75,3,%u,14,073E,0004", unsigned(800/get_rate()));
@@ -570,11 +570,11 @@ void AP_ExternalAHRS_VectorNav::process_ins_packet2(const uint8_t *b)
 }
 
 /*
-  process IMU mode IMU packet
+  process AHRS mode AHRS packet
  */
-void AP_ExternalAHRS_VectorNav::process_imu_packet(const uint8_t *b)
+void AP_ExternalAHRS_VectorNav::process_ahrs_packet(const uint8_t *b)
 {
-    const struct VN_IMU_packet1 &pkt = *(struct VN_IMU_packet1 *)b;
+    const struct VN_AHRS_packet1 &pkt = *(struct VN_AHRS_packet1 *)b;
 
     last_pkt1_ms = AP_HAL::millis();
 
@@ -677,7 +677,7 @@ int8_t AP_ExternalAHRS_VectorNav::get_port(void) const
 bool AP_ExternalAHRS_VectorNav::healthy(void) const
 {
     const uint32_t now = AP_HAL::millis();
-    if (type == TYPE::VN_IMU) {
+    if (type == TYPE::VN_AHRS) {
         return (now - last_pkt1_ms < 40);
     }
     return (now - last_pkt1_ms < 40 && now - last_pkt2_ms < 500);
@@ -688,7 +688,7 @@ bool AP_ExternalAHRS_VectorNav::initialised(void) const
     if (!setup_complete) {
         return false;
     }
-    if (type == TYPE::VN_IMU) {
+    if (type == TYPE::VN_AHRS) {
         return last_pkt1_ms != 0;
     }
     return last_pkt1_ms != 0 && last_pkt2_ms != 0;
