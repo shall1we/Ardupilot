@@ -1724,7 +1724,6 @@ class QURT(Board):
             "--wrap=calloc",
             "--wrap=free",
             "--wrap=realloc",
-            "--wrap=memalign",
             "--wrap=printf",
             "--wrap=__stack_chk_fail",
             "-lc"
