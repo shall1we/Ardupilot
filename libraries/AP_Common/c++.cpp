@@ -85,10 +85,10 @@ void operator delete[](void * ptr)
 }
 
 
-#if CONFIG_HAL_BOARD != HAL_BOARD_CHIBIOS
+#if CONFIG_HAL_BOARD != HAL_BOARD_CHIBIOS && CONFIG_HAL_BOARD != HAL_BOARD_QURT
 /*
   wrapper around malloc to ensure all memory is initialised as zero
-  ChibiOS has its own wrapper
+  ChibiOS and QURT have their own wrappers
  */
 extern "C" {
     void *__wrap_malloc(size_t size);
