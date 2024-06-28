@@ -1317,6 +1317,19 @@ function winch:relax() end
 ---@return boolean
 function winch:healthy() end
 
+-- desc gripper object
+gripper = {}
+
+-- desc move the gripper to the grab position
+function gripper:grab() end
+
+-- desc move the gripper to the release position
+function gripper:release() end
+
+-- desc returns true if gripper is currently in the released position
+---@return boolean
+function gripper:released() end
+
 -- desc
 iomcu = {}
 
