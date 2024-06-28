@@ -310,6 +310,9 @@ void *Scheduler::_io_thread(void *arg)
 
         // run registered IO processes
         sched->_run_io();
+
+        // update storage
+        hal.storage->_timer_tick();
     }
     return nullptr;
 }

@@ -51,7 +51,7 @@ static UARTDriver serial1Driver("/dev/gcs");
 
 static SPIDeviceManager spiDeviceManager;
 static Empty::AnalogIn analogIn;
-static Empty::Storage storageDriver;
+static Storage storageDriver;
 static Empty::GPIO gpioDriver;
 static Empty::RCInput rcinDriver;
 static RCOutput rcoutDriver;
