@@ -61,11 +61,11 @@ void QURT::UARTDriver::_begin(uint32_t b, uint16_t rxS, uint16_t txS)
      * all ports. This means we don't get delays while waiting to
      * write GPS config packets
      */
-    if (rxS < 8192) {
-        rxS = 8192;
+    if (rxS < 4096) {
+        rxS = 4096;
     }
-    if (txS < 32000) {
-        txS = 32000;
+    if (txS < 4096) {
+        txS = 4096;
     }
 
     while (_in_timer) hal.scheduler->delay(1);
@@ -159,6 +159,8 @@ ssize_t QURT::UARTDriver::_read(uint8_t *buffer, uint16_t size)
  */
 bool QURT::UARTDriver::_write_pending_bytes(void)
 {
+    WITH_SEMAPHORE(_write_mutex);
+
     // write any pending bytes
     uint32_t available_bytes = _writebuf.available();
     uint16_t n = available_bytes;

@@ -32,6 +32,17 @@
 #include "interface.h"
 #include "protocol.h"
 
+
+extern "C" {
+    typedef void (*external_error_handler_t)(void);
+    void fc_set_external_error_handler(external_error_handler_t err_func);
+};
+
+static void crash_error_handler(void)
+{
+    HAP_PRINTF("CRASH_ERROR_HANDLER");
+}
+
 using namespace QURT;
 
 static UARTDriver serial0Driver("/dev/console");
@@ -101,9 +112,11 @@ void HAL_QURT::send_test_message(void)
 
 void HAL_QURT::main_thread(void)
 {
-    HAP_PRINTF("In main_thread!");
+    HAP_PRINTF("In main_thread! PTR=%p", &HAL_QURT::main_thread);
 
-	// Let SLPI image send out it's initialization response before we
+    //fc_set_external_error_handler(crash_error_handler);
+
+    // Let SLPI image send out it's initialization response before we
 	// try to send anything out.
 	qurt_timer_sleep(1000000);
 
@@ -124,14 +137,11 @@ void HAL_QURT::main_thread(void)
     HAP_PRINTF("starting loop");
 
     for (;;) {
-   		qurt_timer_sleep(1000000);
-		// send_test_message();
+        // ensure other threads get some time
+        qurt_timer_sleep(200);
+
+        // call main loop
         _callbacks->loop();
-		// if (debug_loop_count == 100) {
-		// 	send_test_message();
-		// 	debug_loop_count = 0;
-		// }
-		// debug_loop_count++;
     }
 }
 
@@ -139,7 +149,7 @@ void HAL_QURT::start_main_thread(Callbacks* callbacks)
 {
     _callbacks = callbacks;
     scheduler->thread_create(FUNCTOR_BIND_MEMBER(&HAL_QURT::main_thread, void), "main_thread",
-                             (10 * 1024),
+                             (20 * 1024),
                              AP_HAL::Scheduler::PRIORITY_MAIN,
                              0);
 }
